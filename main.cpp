@@ -1,8 +1,11 @@
 #define GL_SILENCE_DEPRECATION
+#define GLFW_INCLUDE_NONE
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+
+#include "mesh.h"
 
 int screenWidth = 854, screenHeight = 480;
 
@@ -29,9 +32,7 @@ int main() {
 
     // 5. Load OpenGL functions with GLAD
     int version = gladLoadGL();
-
-    if (version == 0)
-    {
+    if (version == 0){
         std::cerr << "Failed to initialize GLAD\n";
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -42,9 +43,14 @@ int main() {
               << glGetString(GL_VERSION)
               << '\n';
 
+    float vertices[2] = {1.0f, 1.0f};
+    unsigned int triangles[2] = {0, 1};
+
+    Mesh mesh{ 1, vertices, triangles, 1, 1 };
+
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(0.1f, 0.4f, 0.2f, 1.0f);
+        glClearColor(0.2f, 0.6f, 0.8f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glfwSwapBuffers(window);
