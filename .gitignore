@@ -402,3 +402,6 @@ FodyWeavers.xsd
 
 build/app
 buid.sh
+imgs/
+cube_data.json
+libs/
