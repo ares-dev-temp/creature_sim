@@ -3,6 +3,9 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -12,10 +15,16 @@
 #include "shader.h"
 #include "texture.h"
 #include "mesh.h"
+#include "camera.h"
 
 using json = nlohmann::json;
 
 int screenWidth = 854, screenHeight = 480;
+
+//time between current frame and last frame
+float deltaTime = 0.0f;
+//time of last frame
+float lastFrame = 0.0f;
 
 int main() {
     if (!glfwInit()) {
@@ -51,12 +60,13 @@ int main() {
               << glGetString(GL_VERSION)
               << '\n';
 
+    Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f), (float)screenWidth/(float)screenHeight };
+
     //Create Shaders
     const char *vertex_shader_file_path = "shaders/vertex_shader.glsl";
     const char *fragment_shader_file_path = "shaders/fragment_shader.glsl";
 
     Shader myShader{ vertex_shader_file_path, fragment_shader_file_path };
-    //myShader.compile_shader();
     printf( "compiled shaders\n" );
 
     //Load texture
@@ -85,10 +95,24 @@ int main() {
 
     Mesh mesh{ 8, vertices, triangles, (int)vertex_data.size(), (int)indice_data.size() };
 
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+
+    glEnable( GL_DEPTH_TEST );
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_BACK);
+
+    int fps = 0;
+    float timePassed = 0.0f;
+
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         glClearColor(0.2f, 0.6f, 0.8f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // bind textures on corresponding texture units
         glActiveTexture(GL_TEXTURE0);
@@ -99,11 +123,33 @@ int main() {
         // ..:: Drawing code (in render loop) :: ..
         myShader.use();
 
+        camera.update_viewMatrix( );
+
+        modelMatrix = glm::rotate( modelMatrix, glm::radians(90.0f * deltaTime), glm::vec3(1.0f, 0.3f, 0.5f) );
+
+        int viewLoc = glGetUniformLocation( myShader.ID, "view" );
+        glUniformMatrix4fv( viewLoc, 1, GL_FALSE, glm::value_ptr(camera.viewMatrix) );
+
+        int projLoc = glGetUniformLocation( myShader.ID, "projection" );
+        glUniformMatrix4fv( projLoc, 1, GL_FALSE, glm::value_ptr( camera.perspectiveMatrix ) );
+
+        int modelLoc = glGetUniformLocation( myShader.ID, "model" );
+        glUniformMatrix4fv( modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix) );
+
         glBindVertexArray(mesh.VAO);
         glDrawElements( GL_TRIANGLES, mesh.triangleCount, GL_UNSIGNED_INT, 0 );
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        if( timePassed < 1.0f ){
+            timePassed += deltaTime;
+            fps++;
+        }else{
+            printf( "FPS: %d\n", fps );
+            timePassed = 0.0f;
+            fps = 0;
+        }
     }
 
     glfwTerminate();
