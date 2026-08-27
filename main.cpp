@@ -12,10 +12,10 @@
 #include <nlohmann/json.hpp>
 
 #include "libs/stb_image.h"
-#include "shader.h"
-#include "texture.h"
-#include "mesh.h"
-#include "camera.h"
+#include "rendering/shader.h"
+#include "rendering/texture.h"
+#include "rendering/mesh.h"
+#include "rendering/camera.h"
 
 using json = nlohmann::json;
 
@@ -25,6 +25,72 @@ int screenWidth = 854, screenHeight = 480;
 float deltaTime = 0.0f;
 //time of last frame
 float lastFrame = 0.0f;
+
+float lastX = 427.0f, lastY = 240.0f;
+
+bool firstMouse = true;
+float yaw = -90.0f, pitch = 0.0f;
+
+Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f), (float)screenWidth/(float)screenHeight };
+
+void processInput( GLFWwindow *window ){
+    if( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS )
+        glfwSetWindowShouldClose(window, true);
+    
+    float cameraSpeed = 5.0f * deltaTime;
+    
+    if( glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS )
+        camera.position += camera.forward * cameraSpeed;
+
+    if( glfwGetKey( window, GLFW_KEY_S ) == GLFW_PRESS )
+        camera.position += -camera.forward * cameraSpeed;
+
+    if( glfwGetKey( window, GLFW_KEY_A ) == GLFW_PRESS ){
+        glm::vec3 dir = glm::normalize( glm::cross( camera.forward, camera.up ) );
+        camera.position += -dir * cameraSpeed;
+    }
+
+    if( glfwGetKey( window, GLFW_KEY_D ) == GLFW_PRESS ){
+        glm::vec3 dir = glm::normalize( glm::cross( camera.forward, camera.up ) );
+        camera.position += dir * cameraSpeed;
+    }
+}
+
+void mouse_callback( GLFWwindow *window, double xpos, double ypos ){
+    if( firstMouse ){
+        lastX = (float)xpos;
+        lastY = (float)ypos;
+        firstMouse = false;
+    }
+    float xoffset = (float)xpos - lastX;
+    float yoffset = lastY - (float)ypos;
+    lastX = (float)xpos;
+    lastY = (float)ypos;
+
+    const float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if( pitch > 89.0f )
+        pitch = 89.0f;
+    if( pitch < -89.0f )
+        pitch = -89.0f;
+
+    glm::vec3 direction;
+    direction.x = cos( glm::radians( yaw ) ) * cos( glm::radians( pitch ) );
+    direction.y = sin( glm::radians( pitch ) );
+    direction.z = sin( glm::radians( yaw ) ) * cos( glm::radians( pitch ) );
+    camera.forward = glm::normalize( direction );
+}
+
+float rand_f( float min_x, float max_x ){
+    float val = (rand() % 1000) / 1000.0f;
+    //return (val - min_x) / (max_x - min_x);
+    return val * (max_x - min_x) + min_x;
+}
 
 int main() {
     if (!glfwInit()) {
@@ -46,6 +112,8 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     // 5. Load OpenGL functions with GLAD
     int version = gladLoadGL();
@@ -60,7 +128,7 @@ int main() {
               << glGetString(GL_VERSION)
               << '\n';
 
-    Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f), (float)screenWidth/(float)screenHeight };
+    //Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f), (float)screenWidth/(float)screenHeight };
 
     //Create Shaders
     const char *vertex_shader_file_path = "shaders/vertex_shader.glsl";
@@ -105,11 +173,23 @@ int main() {
     int fps = 0;
     float timePassed = 0.0f;
 
+    glm::vec3 positions[100];
+
+    for( int i = 0; i < 100; i++ ){
+        positions[i] = glm::vec3( rand_f(-6.0f, 6.0f), rand_f(-1.2f, 1.2f), rand_f(-8.0f, 0.0f) );
+        //std::cout << positions[i].x << "\n" << std::endl;
+        //std::cout << (rand() % 1000) / 1000.0f << std::endl;
+        //std::cout << positions[i].z << std::endl;
+    }
+
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        //process inputs
+        processInput(window);
 
         glClearColor(0.2f, 0.6f, 0.8f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -125,19 +205,24 @@ int main() {
 
         camera.update_viewMatrix( );
 
-        modelMatrix = glm::rotate( modelMatrix, glm::radians(90.0f * deltaTime), glm::vec3(1.0f, 0.3f, 0.5f) );
-
         int viewLoc = glGetUniformLocation( myShader.ID, "view" );
         glUniformMatrix4fv( viewLoc, 1, GL_FALSE, glm::value_ptr(camera.viewMatrix) );
 
         int projLoc = glGetUniformLocation( myShader.ID, "projection" );
         glUniformMatrix4fv( projLoc, 1, GL_FALSE, glm::value_ptr( camera.perspectiveMatrix ) );
 
-        int modelLoc = glGetUniformLocation( myShader.ID, "model" );
-        glUniformMatrix4fv( modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix) );
+        for( int i = 0; i < 100; i++ ){
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, positions[i]);
+            float angle = glm::radians(1.0f) * (i+1.0) * glfwGetTime();
+            modelMatrix = glm::rotate( modelMatrix, angle, glm::vec3(1.0f, 0.3f, 0.5f) );
 
-        glBindVertexArray(mesh.VAO);
-        glDrawElements( GL_TRIANGLES, mesh.triangleCount, GL_UNSIGNED_INT, 0 );
+            int modelLoc = glGetUniformLocation( myShader.ID, "model" );
+            glUniformMatrix4fv( modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix) );
+
+            glBindVertexArray(mesh.VAO);
+            glDrawElements( GL_TRIANGLES, mesh.triangleCount, GL_UNSIGNED_INT, 0 );
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();

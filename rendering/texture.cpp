@@ -1,7 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include "texture.h"
-#include "libs/stb_image.h"
+#include "../libs/stb_image.h"
 #include <GLFW/glfw3.h>
 
 Texture::Texture( const char *file_name, GLenum format, int flip ){
