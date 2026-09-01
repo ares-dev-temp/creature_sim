@@ -142,8 +142,13 @@ int main() {
     Texture textureB{"imgs/awesomeface.png", GL_RGBA, 1};
 
     myShader.use();
-    glUniform1i( glGetUniformLocation(myShader.ID, "tex_1"), 0 );
-    glUniform1i( glGetUniformLocation(myShader.ID, "tex_2"), 1 );
+    //glUniform1i( glGetUniformLocation(myShader.ID, "tex_1"), 0 );
+    //glUniform1i( glGetUniformLocation(myShader.ID, "tex_2"), 1 );
+    //myShader.set_texture( "text_1", 0 );
+    //myShader.set_texture( "tex_2", 1 );
+    myShader.set_vector3( "color", glm::vec3(0.0f, 0.0f, 1.0f) );
+    myShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
+    myShader.set_vector3( "lightPos", glm::vec3(0.0f, 5.0f, 0.0f) );
     
     std::ifstream f("cube_data.json");
     json data = json::parse(f);
@@ -154,9 +159,9 @@ int main() {
     std::vector<float> vertex_data = data["vertex_data_2"].get<std::vector<float>>();
     std::vector<unsigned int> indice_data = data["indices"].get<std::vector<unsigned int>>();
 
-    for( int i = 0; i < vertex_data.size(); i+=3 ){
-        vertex_data[i+2] = vertex_data[i+2] + 0.0;
-    }
+    //for( int i = 0; i < vertex_data.size(); i+=3 ){
+    //    vertex_data[i+2] = vertex_data[i+2] + 0.0;
+    //}
     
     float *vertices = vertex_data.data();
     unsigned int *triangles = indice_data.data();
@@ -173,14 +178,16 @@ int main() {
     int fps = 0;
     float timePassed = 0.0f;
 
-    glm::vec3 positions[100];
+    glm::vec3 positions[10];
 
-    for( int i = 0; i < 100; i++ ){
+    for( int i = 0; i < 10; i++ ){
         positions[i] = glm::vec3( rand_f(-6.0f, 6.0f), rand_f(-1.2f, 1.2f), rand_f(-8.0f, 0.0f) );
         //std::cout << positions[i].x << "\n" << std::endl;
         //std::cout << (rand() % 1000) / 1000.0f << std::endl;
         //std::cout << positions[i].z << std::endl;
     }
+
+    //positions[0] = glm::vec3( 0.0f, 0.0f, 0.0f );
 
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
@@ -199,7 +206,7 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, textureA.ID);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, textureB.ID);
-
+        
         // ..:: Drawing code (in render loop) :: ..
         myShader.use();
 
@@ -211,10 +218,10 @@ int main() {
         int projLoc = glGetUniformLocation( myShader.ID, "projection" );
         glUniformMatrix4fv( projLoc, 1, GL_FALSE, glm::value_ptr( camera.perspectiveMatrix ) );
 
-        for( int i = 0; i < 100; i++ ){
+        for( int i = 0; i < 10; i++ ){
             glm::mat4 modelMatrix = glm::mat4(1.0f);
             modelMatrix = glm::translate(modelMatrix, positions[i]);
-            float angle = glm::radians(1.0f) * (i+1.0) * glfwGetTime();
+            float angle = glm::radians(10.0f) * (i+1.0) * glfwGetTime();
             modelMatrix = glm::rotate( modelMatrix, angle, glm::vec3(1.0f, 0.3f, 0.5f) );
 
             int modelLoc = glGetUniformLocation( myShader.ID, "model" );

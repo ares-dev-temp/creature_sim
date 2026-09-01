@@ -24,12 +24,16 @@ Mesh::Mesh( int vertexCount, float *vertexData, unsigned int *triangles, int ver
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * triangle_size, triangles, GL_STATIC_DRAW );
 
     // 1. then set the vertex attributes pointers
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     //set the texture coord attribute pointer
-    glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)) );
+    glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)) );
     glEnableVertexAttribArray(1);
+
+    //set the normal vector attribute pointer
+    glVertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)) );
+    glEnableVertexAttribArray(2);
 }
 
 Mesh::~Mesh(){

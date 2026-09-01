@@ -85,6 +85,14 @@ void Shader::compile_shader(){
     glDeleteShader(fragmentShader);
 }
 
+void Shader::set_texture( const char* name, int id ){
+    glUniform1i( glGetUniformLocation(ID, name), id );
+}
+
+void Shader::set_vector3( const char* name, glm::vec3 vector ){
+    glUniform3fv( glGetUniformLocation( ID, name ), 1, &vector[0] );
+}
+
 void Shader::use(){
     glUseProgram(ID);
 }
