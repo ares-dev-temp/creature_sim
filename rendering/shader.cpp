@@ -93,6 +93,11 @@ void Shader::set_vector3( const char* name, glm::vec3 vector ){
     glUniform3fv( glGetUniformLocation( ID, name ), 1, &vector[0] );
 }
 
+void Shader::set_matrix( const char* name, glm::mat4 matrix ){
+    int loc = glGetUniformLocation( ID, name );
+    glUniformMatrix4fv( loc, 1, GL_FALSE, glm::value_ptr(matrix) );
+}
+
 void Shader::use(){
     glUseProgram(ID);
 }

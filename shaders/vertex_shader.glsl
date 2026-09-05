@@ -22,3 +22,4 @@ void main(){
     fragPos = vec3( model * vec4(aPos, 1.0f) );
     normal = mat3( transpose( inverse(model) ) ) * aNormal;
 }
+
