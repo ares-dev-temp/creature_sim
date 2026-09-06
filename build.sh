@@ -4,6 +4,7 @@ clang -c glad.c -I./include -o glad.o
 
 clang++ *.cpp glad.o \
 rendering/*.cpp \
+entities/*.cpp \
 -I./include \
 -I/opt/homebrew/include \
 -L/opt/homebrew/lib \

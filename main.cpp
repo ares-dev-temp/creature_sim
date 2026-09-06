@@ -16,6 +16,7 @@
 #include "rendering/texture.h"
 #include "rendering/mesh.h"
 #include "rendering/camera.h"
+#include "entities/entity.h"
 
 using json = nlohmann::json;
 
@@ -145,12 +146,12 @@ int main() {
     Texture textureA{"imgs/container.jpg", GL_RGB};
     Texture textureB{"imgs/awesomeface.png", GL_RGBA, 1};
 
-    glm::vec3 lightPos = glm::vec3( 0.0f, 5.0f, 0.0f );
+    //glm::vec3 lightPos = glm::vec3( 0.0f, 10.0f, 0.0f );
 
     myShader.use();
     myShader.set_vector3( "color", glm::vec3(0.0f, 0.0f, 1.0f) );
     myShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
-    myShader.set_vector3( "lightPos", lightPos );
+    //myShader.set_vector3( "lightPos", lightPos );
     
     std::ifstream f("cube_data.json");
     json data = json::parse(f);
@@ -160,10 +161,6 @@ int main() {
 
     std::vector<float> vertex_data = data["vertex_data_2"].get<std::vector<float>>();
     std::vector<unsigned int> indice_data = data["indices"].get<std::vector<unsigned int>>();
-
-    //for( int i = 0; i < vertex_data.size(); i+=3 ){
-    //    vertex_data[i+2] = vertex_data[i+2] + 0.0;
-    //}
     
     float *vertices = vertex_data.data();
     unsigned int *triangles = indice_data.data();
@@ -178,11 +175,25 @@ int main() {
     lightShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
     Mesh lightMesh{ 8, vertices, triangles, (int)vertex_data.size(), (int)indice_data.size() };
 
-    glm::vec3 positions[1];
-    for( int i = 0; i < 1; i++ )
-        positions[i] = glm::vec3( rand_f(-8.0f, 8.0f), rand_f(-4.0f, 4.0f), rand_f(-8.0f, 8.0f) );
+    //glm::vec3 positions[1];
+    //for( int i = 0; i < 1; i++ )
+    //    positions[i] = glm::vec3( rand_f(-8.0f, 8.0f), rand_f(-4.0f, 4.0f), rand_f(-8.0f, 8.0f) );
+    //positions[0] = glm::vec3( 0.0f, -1.0f, 0.0f );
 
-    positions[0] = glm::vec3( 0.0f, 0.0f, 0.0f );
+    //Create entities
+    Entity ground_cube{&mesh, &myShader};
+    Entity light{&mesh, &lightShader};
+    
+    //cube.position = glm::vec3( rand_f(-8.0f, 8.0f), rand_f(-4.0f, 4.0f), rand_f(-8.0f, 8.0f) );
+    ground_cube.set_position( glm::vec3( 0.0f, -1.0f, 0.0f ) );
+    ground_cube.set_scale( glm::vec3(50.0f, 0.5f, 50.0f) );
+
+    light.set_position( glm::vec3( 0.0f, 10.0f, 0.0f ) );
+
+    myShader.set_vector3( "lightPos", light.position );
+
+    Entity cube{&mesh, &myShader};
+    cube.set_position( glm::vec3(0.0f, 2.0f, -5.0f) );
 
     glEnable( GL_DEPTH_TEST );
     //glEnable(GL_CULL_FACE);
@@ -214,41 +225,26 @@ int main() {
 
         camera.update_viewMatrix( );
 
-        /*float rad = 0.5f * sin( glfwGetTime() + 1.0f ) + 0.5f;
+        //float rad = 0.5f * sin( glfwGetTime() + 1.0f ) + 0.5f;
+        float x = cos(glfwGetTime()) * 8.0f;
+        //float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
+        light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
 
-        float x = sin(glfwGetTime() + 0.5f) * 8.0f * rad;
-        float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
-
-        lightPos = glm::vec3( x, sin(glfwGetTime() + 2.0f) * 5.0f, z );*/
-
-        myShader.set_vector3( "lightPos", lightPos );
-
+        myShader.set_vector3( "lightPos", light.position );
         myShader.set_matrix( "view", camera.viewMatrix );
         myShader.set_matrix( "projection", camera.perspectiveMatrix );
 
-        for( int i = 0; i < 1; i++ ){
-            glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, positions[i]);
-            //float angle = glm::radians(10.0f) * (i+1.0) * glfwGetTime();
-            //modelMatrix = glm::rotate( modelMatrix, angle, glm::vec3(1.0f, 0.3f, 0.5f) );
-
-            modelMatrix = glm::scale( modelMatrix, glm::vec3(50.0f, 0.5f, 50.0f) );
-
-            myShader.set_matrix( "model", modelMatrix );
-
-            mesh.draw();
-        }
+        float angle = glm::radians(90.0f) * deltaTime;
+        cube.rotate( angle, glm::vec3(1.0f, 0.3f, 0.5f) );
+        cube.render();
+        
+        ground_cube.render();
 
         lightShader.use();
-
         lightShader.set_matrix( "view", camera.viewMatrix );
         lightShader.set_matrix( "projection", camera.perspectiveMatrix );
 
-        glm::mat4 lightModelMatrix = glm::mat4(1.0f);
-        lightModelMatrix = glm::translate(lightModelMatrix, lightPos);
-        lightShader.set_matrix( "model", lightModelMatrix );
-        lightMesh.draw();
-
+        light.render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
