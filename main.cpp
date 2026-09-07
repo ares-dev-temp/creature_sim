@@ -1,6 +1,9 @@
 #define GL_SILENCE_DEPRECATION
 #define GLFW_INCLUDE_NONE
 
+#include <iostream>
+#include <vector>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -10,6 +13,77 @@
 #include <fstream>
 #include <vector>
 #include <nlohmann/json.hpp>
+
+/*#include <Jolt/Jolt.h>
+#include <Jolt/Core/Factory.h>
+#include <Jolt/RegisterTypes.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>*/
+#include <Jolt/Jolt.h>
+#include <Jolt/Core/Factory.h>
+#include <Jolt/RegisterTypes.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Core/JobSystemThreadPool.h>
+#include <Jolt/Physics/PhysicsSettings.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+
+using namespace JPH;
+
+namespace Layers
+{
+  static constexpr ObjectLayer MOVING = 0;
+};
+
+class ObjectLayerPairFilterImpl: public ObjectLayerPairFilter
+{
+  public:
+    virtual bool ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const override {
+      return true;
+    }
+};
+
+namespace BroadPhaseLayers
+{
+  static constexpr BroadPhaseLayer MOVING(0);
+};
+
+class BPLayerInterfaceImpl final: public BroadPhaseLayerInterface
+{
+  public:
+    virtual uint GetNumBroadPhaseLayers() const override {
+      return 1;
+    }
+
+    virtual BroadPhaseLayer GetBroadPhaseLayer(ObjectLayer inLayer) const override {
+      return BroadPhaseLayers::MOVING;
+    }
+
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+    virtual const char *GetBroadPhaseLayerName(BroadPhaseLayer inLayer) const override {
+      return "MOVING";
+    }
+#endif
+};
+
+class ObjectVsBroadPhaseLayerFilterImpl : public ObjectVsBroadPhaseLayerFilter
+{
+public:
+  virtual bool ShouldCollide(ObjectLayer inLayer1, BroadPhaseLayer inLayer2) const override {
+    return true;
+  }
+};
+
+// STL
+#include <iostream>
 
 #include "libs/stb_image.h"
 #include "rendering/shader.h"
@@ -32,7 +106,7 @@ float lastX = 427.0f, lastY = 240.0f;
 bool firstMouse = true;
 float yaw = -90.0f, pitch = 0.0f;
 
-Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f), (float)screenWidth/(float)screenHeight };
+Camera camera{ glm::vec3(0.0f, 10.0f, 20.0f), (float)screenWidth/(float)screenHeight };
 
 void processInput( GLFWwindow *window ){
     if( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS )
@@ -129,6 +203,13 @@ int main() {
               << glGetString(GL_VERSION)
               << '\n';
 
+    JPH::RegisterDefaultAllocator();
+
+    // 2. Create the Jolt factory
+    JPH::Factory::sInstance = new JPH::Factory();
+    // 3. Register all Jolt physics types
+    JPH::RegisterTypes();
+
     //Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f), (float)screenWidth/(float)screenHeight };
 
     //Create Shaders
@@ -192,8 +273,96 @@ int main() {
 
     myShader.set_vector3( "lightPos", light.position );
 
-    Entity cube{&mesh, &myShader};
-    cube.set_position( glm::vec3(0.0f, 2.0f, -5.0f) );
+
+    TempAllocatorMalloc temp_allocator;
+    JobSystemThreadPool job_system(cMaxPhysicsJobs, cMaxPhysicsBarriers, thread::hardware_concurrency() - 1);
+
+    // 4. Create the physics system
+    JPH::PhysicsSystem physics_system;
+    std::cout << "Jolt Physics loaded!\n";
+
+    const uint cMaxBodies = 1024;
+    const uint cNumBodyMutexes = 0;
+    const uint cMaxBodyPairs = 8192;//1024;
+    const uint cMaxContactConstraints = 8192;//1024;
+    BPLayerInterfaceImpl broad_phase_layer_interface;
+    ObjectLayerPairFilterImpl object_vs_object_layer_filter;
+    ObjectVsBroadPhaseLayerFilterImpl object_vs_broadphase_layer_filter;
+    
+    //float a = 1.0;
+    //float b = 0.1;
+    //float c = 0.5;
+
+    physics_system.Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs, cMaxContactConstraints, broad_phase_layer_interface,
+                      object_vs_broadphase_layer_filter, object_vs_object_layer_filter);
+    physics_system.SetGravity(Vec3(0, -9.8f, 0));
+
+    BodyInterface &body_interface = physics_system.GetBodyInterface();
+
+    int spawnCount = 1000;
+    std::vector<Body*> bodies;
+    std::vector<Entity> entities;
+
+    //float cube_x = 0.0f, cube_y = 2.0f, cube_z = -5.0f;
+    //Entity cube{&mesh, &myShader};
+    //cube.set_position( glm::vec3(cube_x, cube_y, cube_z) );
+
+    for( int i = 0; i < spawnCount; i++ ){
+        float pos_x = rand_f(-8.0f, 8.0f);
+        float pos_y = rand_f( 5.0f, 20.0f);
+        float pos_z = rand_f(-10.0f, 10.0f);
+
+        entities.push_back( Entity(&mesh, &myShader) );
+        entities[i].set_position( glm::vec3(pos_x, pos_y, pos_z) );
+
+        //block physics settings
+        Quat rotationX = Quat::sRotation(
+            Vec3::sAxisX(),
+            DegreesToRadians( rand_f(0.0f, 180.0f) )
+        );
+
+        Quat rotationY = Quat::sRotation(
+            Vec3::sAxisY(),
+            DegreesToRadians( rand_f(0.0f, 180.0f) )
+        );
+
+        Quat rotation = rotationX * rotationY;
+
+        BoxShapeSettings body_shape_settings(Vec3(1.0f, 1.0f, 1.0f) * 0.5f);
+        body_shape_settings.mConvexRadius = 0.01;
+        body_shape_settings.SetDensity(200.0);
+        body_shape_settings.SetEmbedded();
+        ShapeSettings::ShapeResult body_shape_result = body_shape_settings.Create();
+        ShapeRefC body_shape = body_shape_result.Get();
+        BodyCreationSettings body_settings(body_shape, RVec3(pos_x, pos_y, pos_z), rotation, EMotionType::Dynamic, Layers::MOVING);
+        body_settings.mMaxLinearVelocity = 10000.0;
+        body_settings.mApplyGyroscopicForce = true;
+        body_settings.mLinearDamping = 0.0;
+        body_settings.mAngularDamping = 0.0;
+        Body *body = body_interface.CreateBody(body_settings);
+        body->SetFriction(0.5);
+        body->SetRestitution(0.3f);
+        body_interface.AddBody(body->GetID(), EActivation::Activate);
+
+        body_interface.ActivateBody(body->GetID());
+
+        bodies.push_back( body );
+    }
+
+    //ground box physic settings
+    BoxShapeSettings ground_shape_settings(Vec3(50.0f, 0.5f, 50.0f) * 0.5f);
+    ground_shape_settings.mConvexRadius = 0.01;
+    ground_shape_settings.SetEmbedded();
+    ShapeSettings::ShapeResult ground_shape_result = ground_shape_settings.Create();
+    ShapeRefC ground_shape = ground_shape_result.Get();
+    BodyCreationSettings ground_settings(ground_shape, RVec3(0.0, -1.0f, 0.0), Quat::sIdentity(), EMotionType::Static, Layers::MOVING);
+    Body *ground = body_interface.CreateBody(ground_settings);
+    ground->SetFriction(0.5);
+    body_interface.AddBody(ground->GetID(), EActivation::DontActivate);
+
+    body_interface.ActivateBody(ground->GetID());
+
+    const int cCollisionSteps = 1;
 
     glEnable( GL_DEPTH_TEST );
     //glEnable(GL_CULL_FACE);
@@ -207,6 +376,9 @@ int main() {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        //process physics
+        physics_system.Update(deltaTime, cCollisionSteps, &temp_allocator, &job_system);
 
         //process inputs
         processInput(window);
@@ -234,9 +406,23 @@ int main() {
         myShader.set_matrix( "view", camera.viewMatrix );
         myShader.set_matrix( "projection", camera.perspectiveMatrix );
 
-        float angle = glm::radians(90.0f) * deltaTime;
-        cube.rotate( angle, glm::vec3(1.0f, 0.3f, 0.5f) );
-        cube.render();
+        //cube physics
+        for( int i = 0; i < spawnCount; i++ ){
+            body_interface.ActivateBody(bodies[i]->GetID());
+            RMat44 transform = body_interface.GetWorldTransform(bodies[i]->GetID());
+            RVec3 position = transform.GetTranslation();
+            Vec3 x_coord = transform.GetAxisX();
+            Vec3 y_coord = transform.GetAxisY();
+            Vec3 z_coord = transform.GetAxisZ();
+            entities[i].set_position( glm::vec3( position.GetX(), position.GetY(), position.GetZ() ) );
+            float rotation[9] = {x_coord.GetX(), y_coord.GetX(), z_coord.GetX(), x_coord.GetY(), y_coord.GetY(), z_coord.GetY(), x_coord.GetZ(), y_coord.GetZ(), z_coord.GetZ()};
+            entities[i].set_rotation( rotation );
+
+            //cube rendering
+            //float angle = glm::radians(90.0f) * deltaTime;
+            //cube.rotate( angle, glm::vec3(1.0f, 0.3f, 0.5f) );
+            entities[i].render();
+        }
         
         ground_cube.render();
 
@@ -258,6 +444,11 @@ int main() {
             fps = 0;
         }
     }
+
+    // 6. Shut down Jolt
+    JPH::UnregisterTypes();
+    delete JPH::Factory::sInstance;
+    JPH::Factory::sInstance = nullptr;
 
     glfwTerminate();
     return 0;

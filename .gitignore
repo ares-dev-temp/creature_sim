@@ -400,9 +400,11 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+build/
 build/app
 buid.sh
 imgs/
 cube_data.json
 libs/
 include/
+JoltPhysics/

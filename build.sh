@@ -1,17 +1,13 @@
+#!/bin/bash
+
+set -e
+
 mkdir -p build
 
-clang -c glad.c -I./include -o glad.o
+cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_OSX_ARCHITECTURES=arm64
 
-clang++ *.cpp glad.o \
-rendering/*.cpp \
-entities/*.cpp \
--I./include \
--I/opt/homebrew/include \
--L/opt/homebrew/lib \
--lglfw \
--lcjson \
--framework Cocoa \
--framework OpenGL \
--framework IOKit \
--framework CoreVideo \
--o build/app
+cmake --build build --parallel
+
+./build/creature_sim

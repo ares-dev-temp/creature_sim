@@ -20,6 +20,8 @@ class Entity{
 
         void set_position( glm::vec3 vector );
 
+        void set_rotation( float rotation[9] );
+
         void set_scale( glm::vec3 vector );
 
         void render();

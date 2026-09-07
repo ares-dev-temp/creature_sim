@@ -23,6 +23,20 @@ void Entity::set_position( glm::vec3 vector ){
     modelMatrix[3][2] = position.z;
 }
 
+void Entity::set_rotation( float rotation[9] ){
+    modelMatrix[0][0] = rotation[0];
+    modelMatrix[1][0] = rotation[1];
+    modelMatrix[2][0] = rotation[2];
+
+    modelMatrix[0][1] = rotation[3];
+    modelMatrix[1][1] = rotation[4];
+    modelMatrix[2][1] = rotation[5];
+
+    modelMatrix[0][2] = rotation[6];
+    modelMatrix[1][2] = rotation[7];
+    modelMatrix[2][2] = rotation[8];
+}
+
 void Entity::set_scale( glm::vec3 vector ){
     scale = vector;
     modelMatrix = glm::scale( modelMatrix, vector );
