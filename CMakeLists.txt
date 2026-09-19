@@ -34,6 +34,8 @@ add_executable(creature_sim
     rendering/shader.cpp
     rendering/texture.cpp
     entities/entity.cpp
+    physics/physics_manager.cpp
+    physics/rigidbody.cpp
     main.cpp
 )
 
