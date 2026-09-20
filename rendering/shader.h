@@ -24,6 +24,8 @@ class Shader{
 
         void set_matrix( const char* matrixName, glm::mat4 matrix );
 
+        void set_float( const char* floatName, float val );
+
         //activates the shader
         void use();
 };

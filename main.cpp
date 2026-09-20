@@ -146,6 +146,9 @@ int main() {
     const char *fragment_light_shader_file_path = "shaders/light_fragment_shader.glsl";
     Shader lightShader{ vertex_light_shader_file_path, fragment_light_shader_file_path };
 
+    const char *fragment_material_shader_file_path = "shaders/material_shader.glsl";
+    Shader materialShader{ vertex_shader_file_path, fragment_material_shader_file_path };
+
     //Load texture
     Texture textureA{"imgs/container.jpg", GL_RGB};
     Texture textureB{"imgs/awesomeface.png", GL_RGBA, 1};
@@ -179,6 +182,15 @@ int main() {
     lightShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
     Mesh lightMesh{ 8, vertices, triangles, (int)vertex_data.size(), (int)indice_data.size() };
 
+    materialShader.use();
+    materialShader.set_vector3( "color", glm::vec3(0.0f, 0.0f, 1.0f) );
+    materialShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
+    materialShader.set_vector3( "viewPos", camera.position );
+    materialShader.set_vector3( "material.ambient", glm::vec3(1.0f, 0.5f, 0.31f) );
+    materialShader.set_vector3( "material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f) );
+    materialShader.set_vector3( "material.specular", glm::vec3(0.5f, 0.5f, 0.5f) );
+    materialShader.set_float( "material.shininess", 1.0f );
+
     //glm::vec3 positions[1];
     //for( int i = 0; i < 1; i++ )
     //    positions[i] = glm::vec3( rand_f(-8.0f, 8.0f), rand_f(-4.0f, 4.0f), rand_f(-8.0f, 8.0f) );
@@ -204,12 +216,13 @@ int main() {
 
     physicsManager.setup( 1024, 8192, 8192 );
 
-    int spawnCount = 1000;
+    int spawnCount = 500;
     std::vector<Entity> entities;
 
     for( int i = 0; i < spawnCount; i++ ){
         float pos_x = rand_f(-8.0f, 8.0f), pos_y = rand_f( 5.0f, 20.0f), pos_z = rand_f(-10.0f, 10.0f);
-        entities.push_back( Entity(&mesh, &myShader) );
+        //entities.push_back( Entity(&mesh, &myShader) );
+        entities.push_back( Entity(&mesh, &materialShader) );
         entities[i].set_position( glm::vec3(pos_x, pos_y, pos_z) );
 
         //block physics settings
@@ -272,18 +285,25 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, textureB.ID);
         
         // ..:: Drawing code (in render loop) :: ..
-        myShader.use();
+        //myShader.use();
+
+        materialShader.use();
 
         camera.update_viewMatrix( );
 
         //float rad = 0.5f * sin( glfwGetTime() + 1.0f ) + 0.5f;
         float x = cos(glfwGetTime()) * 8.0f;
         //float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
-        light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
+        //light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
 
-        myShader.set_vector3( "lightPos", light.position );
-        myShader.set_matrix( "view", camera.viewMatrix );
-        myShader.set_matrix( "projection", camera.perspectiveMatrix );
+        //myShader.set_vector3( "lightPos", light.position );
+        //myShader.set_matrix( "view", camera.viewMatrix );
+        //myShader.set_matrix( "projection", camera.perspectiveMatrix );
+
+        materialShader.set_vector3( "viewPos", camera.position );
+        materialShader.set_vector3( "lightPos", light.position );
+        materialShader.set_matrix( "view", camera.viewMatrix );
+        materialShader.set_matrix( "projection", camera.perspectiveMatrix );
 
         accumalator += deltaTime;
 
@@ -321,7 +341,12 @@ int main() {
         //render cubes
         for( int i = 0; i < spawnCount; i++ )
             entities[i].render();
-        
+
+        myShader.use();
+        myShader.set_vector3( "lightPos", light.position );
+        myShader.set_matrix( "view", camera.viewMatrix );
+        myShader.set_matrix( "projection", camera.perspectiveMatrix );
+
         ground_cube.render();
 
         lightShader.use();

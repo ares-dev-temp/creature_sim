@@ -98,6 +98,11 @@ void Shader::set_matrix( const char* name, glm::mat4 matrix ){
     glUniformMatrix4fv( loc, 1, GL_FALSE, glm::value_ptr(matrix) );
 }
 
+void Shader::set_float( const char* name, float val ){
+    int loc = glGetUniformLocation( ID, name );
+    glUniform1f( loc, val );
+}
+
 void Shader::use(){
     glUseProgram(ID);
 }
