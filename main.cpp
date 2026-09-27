@@ -191,6 +191,14 @@ int main() {
     materialShader.set_vector3( "material.specular", glm::vec3(0.5f, 0.5f, 0.5f) );
     materialShader.set_float( "material.shininess", 1.0f );
 
+    materialShader.set_vector3( "light.direction", glm::vec3(0.0f, -1.0f, 0.0f) );
+
+    materialShader.set_float( "light.constant", 1.0f );
+    materialShader.set_float( "light.linear", 0.09f );
+    materialShader.set_float( "light.quadratic", 0.032f );
+
+    materialShader.set_float( "light.cutOff", glm::cos( glm::radians( 30.0f ) ) );
+
     //glm::vec3 positions[1];
     //for( int i = 0; i < 1; i++ )
     //    positions[i] = glm::vec3( rand_f(-8.0f, 8.0f), rand_f(-4.0f, 4.0f), rand_f(-8.0f, 8.0f) );
@@ -207,6 +215,8 @@ int main() {
     light.set_position( glm::vec3( 0.0f, 10.0f, 0.0f ) );
 
     myShader.set_vector3( "lightPos", light.position );
+
+    materialShader.set_vector3( "light.position", light.position );
 
     PhysicsManager physicsManager;
     std::cout << "Jolt Physics loaded!\n";
@@ -292,7 +302,7 @@ int main() {
         camera.update_viewMatrix( );
 
         //float rad = 0.5f * sin( glfwGetTime() + 1.0f ) + 0.5f;
-        float x = cos(glfwGetTime()) * 8.0f;
+        float x = sin(glfwGetTime()) * 8.0f;
         //float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
         //light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
 
@@ -301,9 +311,18 @@ int main() {
         //myShader.set_matrix( "projection", camera.perspectiveMatrix );
 
         materialShader.set_vector3( "viewPos", camera.position );
-        materialShader.set_vector3( "lightPos", light.position );
+        //materialShader.set_vector3( "lightPos", light.position );
         materialShader.set_matrix( "view", camera.viewMatrix );
         materialShader.set_matrix( "projection", camera.perspectiveMatrix );
+
+        materialShader.set_float( "light.constant", 1.0f );
+        materialShader.set_float( "light.linear", 0.07f );
+        materialShader.set_float( "light.quadratic", 0.017f );
+
+        materialShader.set_vector3( "light.direction", glm::vec3(0.0f, -1.0f, 0.0f) );
+        materialShader.set_vector3( "light.position", glm::vec3(x, 10.0f, 0.0f) );
+        materialShader.set_float( "light.cutOff", glm::cos( glm::radians( 15.0f ) ) );
+        materialShader.set_float( "light.outerCutOff", glm::cos( glm::radians( 30.0f ) ) );
 
         accumalator += deltaTime;
 
@@ -337,17 +356,17 @@ int main() {
             accumalator -= fixedDeltaTime;
         }
 
-
         //render cubes
         for( int i = 0; i < spawnCount; i++ )
             entities[i].render();
 
         myShader.use();
-        myShader.set_vector3( "lightPos", light.position );
+        //myShader.set_vector3( "light.position", light.position );
         myShader.set_matrix( "view", camera.viewMatrix );
         myShader.set_matrix( "projection", camera.perspectiveMatrix );
 
         ground_cube.render();
+
 
         lightShader.use();
         lightShader.set_matrix( "view", camera.viewMatrix );
