@@ -189,15 +189,49 @@ int main() {
     materialShader.set_vector3( "material.ambient", glm::vec3(1.0f, 0.5f, 0.31f) );
     materialShader.set_vector3( "material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f) );
     materialShader.set_vector3( "material.specular", glm::vec3(0.5f, 0.5f, 0.5f) );
-    materialShader.set_float( "material.shininess", 1.0f );
+    //materialShader.set_vector3( "material.ambient", glm::vec3(1.0f, 1.0f, 1.0f) );
+    //materialShader.set_vector3( "material.diffuse", glm::vec3(1.0f, 1.0f, 1.0f) );
+    //materialShader.set_vector3( "material.specular", glm::vec3(1.0f, 1.0f, 1.0f) );
+    materialShader.set_float( "material.shininess", 4.0f );
 
-    materialShader.set_vector3( "light.direction", glm::vec3(0.0f, -1.0f, 0.0f) );
+    //directional light properties
+    materialShader.set_vector3( "directionalLight.direction", glm::vec3( -0.2f, -1.0f, -0.3f ) );
+    materialShader.set_vector3( "directionalLight.ambient", glm::vec3( 0.05f, 0.05f, 0.05f ) );
+    materialShader.set_vector3( "directionalLight.diffuse", glm::vec3( 0.4f, 0.4f, 0.4f ) );
+    materialShader.set_vector3( "directionalLight.specular", glm::vec3( 0.5f, 0.5f, 0.5f ) );
 
-    materialShader.set_float( "light.constant", 1.0f );
-    materialShader.set_float( "light.linear", 0.09f );
-    materialShader.set_float( "light.quadratic", 0.032f );
+    //point light properties
+    glm::vec3 pointLightPositions[] = {
+        glm::vec3(-12.0f, 5.0f, -12.0f),
+        glm::vec3(-12.0f, 5.0f, 12.0f),
+        glm::vec3( 12.0f, 5.0f, -12.0f),
+        glm::vec3( 12.0f, 5.0f, 12.0f)
+    };
 
-    materialShader.set_float( "light.cutOff", glm::cos( glm::radians( 30.0f ) ) );
+    for( int i = 0; i < 4; i++ ){
+        std::string pointLight = "pointLights[" + std::to_string( i ) + "]";
+        
+        materialShader.set_vector3( (pointLight + ".position").c_str(), pointLightPositions[i] );
+        materialShader.set_vector3( (pointLight + ".ambient").c_str(), glm::vec3( 0.05f, 0.05f, 0.05f ) );
+        materialShader.set_vector3( (pointLight + ".diffuse").c_str(), glm::vec3( 0.8f, 0.8f, 0.8f ) );
+        materialShader.set_vector3( (pointLight + ".specular").c_str(), glm::vec3( 1.0f, 1.0f, 1.0f ) );
+
+        materialShader.set_float( (pointLight + ".contant").c_str(), 1.0f );
+        materialShader.set_float( (pointLight + ".linear").c_str(), 0.09f );
+        materialShader.set_float( (pointLight + ".quadratic").c_str(), 0.032f );
+    }
+
+    //spot light properties
+    materialShader.set_vector3( "spotLight.position", glm::vec3(0.0f, 10.0f, 0.0f) );
+    materialShader.set_vector3( "spotLight.direction", glm::vec3(0.0f, -1.0f, 0.0f) ); //camera.forward );
+    materialShader.set_vector3( "spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f) );
+    materialShader.set_vector3( "spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f) );
+    materialShader.set_vector3( "spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f) );
+    materialShader.set_float( "spotLight.constant", 1.0f );
+    materialShader.set_float( "spotLight.linear", 0.045f );
+    materialShader.set_float( "spotLight.quadratic", 0.0075f );
+    materialShader.set_float( "spotLight.cutOff", glm::cos( glm::radians( 10.0f ) ) );
+    materialShader.set_float( "spotLight.outerCutOff", glm::cos( glm::radians( 15.0f ) ) );
 
     //glm::vec3 positions[1];
     //for( int i = 0; i < 1; i++ )
@@ -205,18 +239,29 @@ int main() {
     //positions[0] = glm::vec3( 0.0f, -1.0f, 0.0f );
 
     //Create entities
-    Entity ground_cube{&mesh, &myShader};
-    Entity light{&mesh, &lightShader};
+    //Entity ground_cube{&mesh, &myShader};
+    Entity ground_cube{&mesh, &materialShader};
+    Entity spotlight{&mesh, &lightShader};
+
+    Entity pointlights[] = {
+        Entity{&mesh, &lightShader},
+        Entity{&mesh, &lightShader},
+        Entity{&mesh, &lightShader},
+        Entity{&mesh, &lightShader}
+    };
+
+    for( int i = 0; i < 4; i++ )
+        pointlights[i].set_position( pointLightPositions[i] );
     
     //cube.position = glm::vec3( rand_f(-8.0f, 8.0f), rand_f(-4.0f, 4.0f), rand_f(-8.0f, 8.0f) );
     ground_cube.set_position( glm::vec3( 0.0f, -1.0f, 0.0f ) );
     ground_cube.set_scale( glm::vec3(50.0f, 0.5f, 50.0f) );
 
-    light.set_position( glm::vec3( 0.0f, 10.0f, 0.0f ) );
+    spotlight.set_position( glm::vec3( 0.0f, 10.0f, 0.0f ) );
 
-    myShader.set_vector3( "lightPos", light.position );
+    myShader.set_vector3( "lightPos", spotlight.position );
 
-    materialShader.set_vector3( "light.position", light.position );
+    //materialShader.set_vector3( "light.position", light.position );
 
     PhysicsManager physicsManager;
     std::cout << "Jolt Physics loaded!\n";
@@ -295,8 +340,6 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, textureB.ID);
         
         // ..:: Drawing code (in render loop) :: ..
-        //myShader.use();
-
         materialShader.use();
 
         camera.update_viewMatrix( );
@@ -306,23 +349,55 @@ int main() {
         //float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
         //light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
 
-        //myShader.set_vector3( "lightPos", light.position );
-        //myShader.set_matrix( "view", camera.viewMatrix );
-        //myShader.set_matrix( "projection", camera.perspectiveMatrix );
-
         materialShader.set_vector3( "viewPos", camera.position );
-        //materialShader.set_vector3( "lightPos", light.position );
         materialShader.set_matrix( "view", camera.viewMatrix );
         materialShader.set_matrix( "projection", camera.perspectiveMatrix );
 
-        materialShader.set_float( "light.constant", 1.0f );
-        materialShader.set_float( "light.linear", 0.07f );
-        materialShader.set_float( "light.quadratic", 0.017f );
+        materialShader.set_vector3( "spotLight.position", glm::vec3(x, 10.0f, 0.0f) );
 
-        materialShader.set_vector3( "light.direction", glm::vec3(0.0f, -1.0f, 0.0f) );
-        materialShader.set_vector3( "light.position", glm::vec3(x, 10.0f, 0.0f) );
-        materialShader.set_float( "light.cutOff", glm::cos( glm::radians( 15.0f ) ) );
-        materialShader.set_float( "light.outerCutOff", glm::cos( glm::radians( 30.0f ) ) );
+
+        /*materialShader.set_vector3( "color", glm::vec3(0.0f, 0.0f, 1.0f) );
+        materialShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
+        materialShader.set_vector3( "viewPos", camera.position );
+        materialShader.set_vector3( "material.ambient", glm::vec3(1.0f, 0.5f, 0.31f) );
+        materialShader.set_vector3( "material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f) );
+        materialShader.set_vector3( "material.specular", glm::vec3(0.5f, 0.5f, 0.5f) );
+        materialShader.set_float( "material.shininess", 32.0f );
+
+        //directional light properties
+        materialShader.set_vector3( "directionalLight.direction", glm::vec3( -0.2f, -1.0f, -0.3f ) );
+        materialShader.set_vector3( "directionalLight.ambient", glm::vec3( 0.05f, 0.05f, 0.05f ) );
+        materialShader.set_vector3( "directionalLight.diffuse", glm::vec3( 0.4f, 0.4f, 0.4f ) );
+        materialShader.set_vector3( "directionalLight.specular", glm::vec3( 0.5f, 0.5f, 0.5f ) );
+
+        //point light properties
+        for( int i = 0; i < 4; i++ ){
+            std::string pointLight = "pointLights[" + std::to_string( i ) + "]";
+            
+            materialShader.set_vector3( (pointLight + ".position").c_str(), pointLightPositions[i] );
+            materialShader.set_vector3( (pointLight + ".ambient").c_str(), glm::vec3( 0.05f, 0.05f, 0.05f ) );
+            materialShader.set_vector3( (pointLight + ".diffuse").c_str(), glm::vec3( 0.8f, 0.8f, 0.8f ) );
+            materialShader.set_vector3( (pointLight + ".specular").c_str(), glm::vec3( 1.0f, 1.0f, 1.0f ) );
+
+            materialShader.set_float( (pointLight + ".contant").c_str(), 1.0f );
+            materialShader.set_float( (pointLight + ".linear").c_str(), 0.09f );
+            materialShader.set_float( (pointLight + ".quadratic").c_str(), 0.032f );
+        }
+
+        //spot light properties
+        materialShader.set_vector3( "spotLight.position", glm::vec3(0.0f, 10.0f, 0.0f) );
+        materialShader.set_vector3( "spotLight.direction", glm::vec3(0.0f, -1.0f, 0.0f) ); //camera.forward );
+        materialShader.set_vector3( "spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f) );
+        materialShader.set_vector3( "spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f) );
+        materialShader.set_vector3( "spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f) );
+        materialShader.set_float( "spotLight.constant", 1.0f );
+        materialShader.set_float( "spotLight.linear", 0.045f );
+        materialShader.set_float( "spotLight.quadratic", 0.0075f );
+        materialShader.set_float( "spotLight.cutOff", glm::cos( glm::radians( 10.0f ) ) );
+        materialShader.set_float( "spotLight.outerCutOff", glm::cos( glm::radians( 15.0f ) ) );*/
+
+        //materialShader.set_vector3( "spotLight.position", camera.position );
+        //materialShader.set_vector3( "spotLight.direction", camera.forward );
 
         accumalator += deltaTime;
 
@@ -360,10 +435,10 @@ int main() {
         for( int i = 0; i < spawnCount; i++ )
             entities[i].render();
 
-        myShader.use();
+        //myShader.use();
         //myShader.set_vector3( "light.position", light.position );
-        myShader.set_matrix( "view", camera.viewMatrix );
-        myShader.set_matrix( "projection", camera.perspectiveMatrix );
+        //myShader.set_matrix( "view", camera.viewMatrix );
+        //myShader.set_matrix( "projection", camera.perspectiveMatrix );
 
         ground_cube.render();
 
@@ -372,7 +447,11 @@ int main() {
         lightShader.set_matrix( "view", camera.viewMatrix );
         lightShader.set_matrix( "projection", camera.perspectiveMatrix );
 
-        light.render();
+        spotlight.set_position( glm::vec3( x, 10.0f, 0.0f ) );
+        spotlight.render();
+
+        for( int i = 0; i < 4; i++ )
+            pointlights[i].render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
