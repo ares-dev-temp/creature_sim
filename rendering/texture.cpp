@@ -14,7 +14,7 @@ Texture::Texture( const char *file_name, GLenum format, int flip ){
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 
-    stbi_set_flip_vertically_on_load( flip );
+    //stbi_set_flip_vertically_on_load( flip );
 
     //load and generates the texture
     unsigned char *data = stbi_load( file_name, &width, &height, &channels, 0 );
