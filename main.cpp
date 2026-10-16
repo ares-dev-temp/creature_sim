@@ -139,6 +139,8 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Required on macOS
 
+    glfwWindowHint( GLFW_SAMPLES, 4 );
+
     GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, "OpenGL Window", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
@@ -396,6 +398,7 @@ int main() {
 
     const int cCollisionSteps = 1;
 
+    glEnable( GL_MULTISAMPLE );
     glEnable( GL_DEPTH_TEST );
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -585,7 +588,6 @@ int main() {
         glDepthFunc(GL_LESS);
 
         glEnable(GL_CULL_FACE);
-
 
         glfwSwapBuffers(window);
         glfwPollEvents();
