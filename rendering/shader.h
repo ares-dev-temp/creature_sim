@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <nlohmann/json.hpp>
 
 class Shader{
     public:
@@ -25,6 +26,8 @@ class Shader{
         void set_matrix( const char* matrixName, glm::mat4 matrix );
 
         void set_float( const char* floatName, float val );
+
+        void get_material( nlohmann::json data, glm::vec3 pointLightPositions[] );
 
         //activates the shader
         void use();
