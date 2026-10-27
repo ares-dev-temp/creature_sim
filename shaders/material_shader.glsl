@@ -85,11 +85,12 @@ void main(){
 
 vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir ){
     vec3 lightDir = normalize( -light.direction );
+    vec3 halfwayDir = normalize( lightDir + viewDir );
     //diffuse shading
     float diff = max(dot(normal, lightDir), 0.0f);
     //specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0f), material.shininess);
     //combine results
     vec3 ambient = light.ambient * material.ambient; //* material.diffuse;
     vec3 diffuse = light.diffuse * diff * material.diffuse;
@@ -100,11 +101,12 @@ vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir 
 
 vec3 CalculatePointLight( PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir ){
     vec3 lightDir = normalize(light.position - fragPos);
+    vec3 halfwayDir = normalize( lightDir + viewDir );
     //diffuse shading
     float diff = max(dot(normal, lightDir), 0.0f);
     //specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0f), material.shininess);
     // attenuation
     float distance = length( light.position - fragPos );
     float attenuation = 1.0f / ( light.constant + 
@@ -124,11 +126,12 @@ vec3 CalculatePointLight( PointLight light, vec3 normal, vec3 fragPos, vec3 view
 
 vec3 CalculateSpotLight( SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir ){
     vec3 lightDir = normalize(light.position - fragPos);
+    vec3 halfwayDir = normalize( lightDir + viewDir );
     //diffuse shading
     float diff = max(dot(normal, lightDir), 0.0f);
     //specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0f), material.shininess);
 
     // attenuation
     float distance = length( light.position - fragPos );
