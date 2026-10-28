@@ -252,7 +252,7 @@ int main() {
     unsigned int depthMapFBO;
     glGenFramebuffers( 1, &depthMapFBO );
 
-    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+    const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
 
     //create depth map texture
     unsigned int depthMap;
@@ -264,9 +264,9 @@ int main() {
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
-
     float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
     glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
     //attach depth texture as FBOs depth buffer
     glBindFramebuffer( GL_FRAMEBUFFER, depthMapFBO );
     glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0 );
@@ -359,8 +359,13 @@ int main() {
         glm::vec3 lightPos = lightTarget - lightDirection * 15.0f;
 
         //render depth of scene to texture
-        float near_plane = 1.0f, far_plane = 40.0f; //7.5f;
-        glm::mat4 lightProjection = glm::ortho( -40.0f, 40.0f, -40.0f, 40.0f, near_plane, far_plane );
+        float near_plane = 1.0f, far_plane = 40.0f;
+        glm::mat4 lightProjection = glm::ortho( -20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane );
+        
+        // note that if you use a perspective projection matrix you'll have to change the light position 
+        // as the current light position isn't enough to reflect the whole scene
+        //glm::mat4 lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane);
+
         glm::mat4 lightView = glm::lookAt( lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f) );
         glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
@@ -372,7 +377,9 @@ int main() {
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer( GL_FRAMEBUFFER, depthMapFBO );
         glClear(GL_DEPTH_BUFFER_BIT);
+        //glCullFace(GL_FRONT);
         RenderScene(&depthShader, &ground_cube, lightSpaceMatrix);
+        //glCullFace(GL_BACK);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         //reset viewport

@@ -65,9 +65,9 @@ uniform DirectionalLight directionalLight;
 uniform PointLight pointLights[POINTLIGHT_COUNT];
 uniform SpotLight spotLight;
 
-float ShadowCalculations( vec4 fragPosLightSpace );
+float ShadowCalculations( vec4 fragPosLightSpace, vec3 normal, vec3 lightDir );
 
-vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir, float shadow );
+vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir );
 vec3 CalculatePointLight( PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, float shadow );
 vec3 CalculateSpotLight( SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, float shadow );
 
@@ -85,10 +85,10 @@ void main(){
     vec3 viewDir = normalize(viewPos - fragPos);
 
     //calculate shadows
-    float shadow = ShadowCalculations( fragPosLightSpace );
+    //float shadow = ShadowCalculations( fragPosLightSpace );
 
     //phase 1: Directional Lighting
-    vec3 lighting = CalculateDirectionLight( directionalLight, norm, viewDir, shadow );
+    vec3 lighting = CalculateDirectionLight( directionalLight, norm, viewDir );
     //phase 2: Point Lighting
     //for( int i = 0; i < POINTLIGHT_COUNT; i++ )
     //    lighting += CalculatePointLight( pointLights[i], norm, fragPos, viewDir, shadow );
@@ -109,21 +109,38 @@ void main(){
     //FragColor = vec4(vec3(depthValue), 1.0); // orthographic
 }
 
-float ShadowCalculations( vec4 fragPosLightSpace ){
+float ShadowCalculations( vec4 fragPosLightSpace, vec3 normal, vec3 lightDir ){
     //perform perspective divides
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     //transform to [0, 1] range
     projCoords = projCoords * 0.5f + 0.5f;
     //get closest depth value from lights perspective (using [0, 1] range fragPosLight as coords)
-    float closestDepth = texture( shadowMap, projCoords.xy ).r;
+    //float closestDepth = texture( shadowMap, projCoords.xy ).r;
     //get depth of current fragment from lights perspective
     float currentDepth = projCoords.z;
+    //shadow bias to prevent shadow acne artifacts
+    float bias = max(0.05f * (1.0f - dot(normal, lightDir)), 0.005f);
     //check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth ? 1.0f : 0.0f;
+    //float shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;
+    float shadow = 0.0f;
+
+    //outside of lights far plane
+    if( projCoords.z > 1.0f )
+        return 0.0f;
+
+    vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
+    for( int x = -1; x <= 1; ++x ){
+        for( int y = -1; y <= 1; ++y ){
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
+        }
+    }
+    shadow /= 9.0f;
+    
     return shadow;
 }
 
-vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir, float shadow ){
+vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir ){
     vec3 lightDir = normalize( -light.direction );
     vec3 halfwayDir = normalize( lightDir + viewDir );
     //diffuse shading
@@ -135,6 +152,9 @@ vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir,
     vec3 ambient = light.ambient * material.ambient; //* material.diffuse;
     vec3 diffuse = light.diffuse * diff * material.diffuse;
     vec3 specular = light.specular * spec * material.specular;
+
+    //calculate shadows
+    float shadow = ShadowCalculations( fragPosLightSpace, normal, lightDir );
     
     vec3 lighting = ambient + (1.0 - shadow) * (diffuse + specular);
 
