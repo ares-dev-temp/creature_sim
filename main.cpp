@@ -25,7 +25,7 @@
 
 using json = nlohmann::json;
 
-int screenWidth = 854, screenHeight = 480;
+const unsigned int SCREEN_WIDTH = 854, SCREEN_HEIGHT = 480;
 
 //time between current frame and last frame
 float deltaTime = 0.0f;
@@ -37,10 +37,32 @@ float lastX = 427.0f, lastY = 240.0f;
 bool firstMouse = true;
 float yaw = -90.0f, pitch = 0.0f;
 
-Camera camera{ glm::vec3(0.0f, 10.0f, 20.0f), (float)screenWidth/(float)screenHeight };
+int spawnCount = 200;
+std::vector<Entity> entities;
 
+json material_data;
+//point light properties
+glm::vec3 pointLightPositions[] = {
+    glm::vec3(-12.0f, 5.0f, -12.0f),
+    glm::vec3(-12.0f, 5.0f, 12.0f),
+    glm::vec3( 12.0f, 5.0f, -12.0f),
+    glm::vec3( 12.0f, 5.0f, 12.0f)
+};
+
+Camera camera{ glm::vec3(0.0f, 10.0f, 20.0f), (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT };
+
+void RenderScene( Shader *shader, Entity *entity, glm::mat4 lightSpaceMatrix );
 void processInput( GLFWwindow *window );
 void mouse_callback( GLFWwindow *window, double xpos, double ypos );
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    // make sure the viewport matches the new window dimensions; note that width and 
+    // height will be significantly larger than specified on retina displays.
+    glViewport(0, 0, width, height);
+}
 
 float rand_f( float min_x, float max_x ){
     float val = (rand() % 1000) / 1000.0f;
@@ -61,7 +83,7 @@ int main() {
 
     glfwWindowHint( GLFW_SAMPLES, 4 );
 
-    GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, "OpenGL Window", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGL Window", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -69,6 +91,7 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback( window, framebuffer_size_callback );
     glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
     glfwSetCursorPosCallback(window, mouse_callback);
 
@@ -80,6 +103,11 @@ int main() {
         glfwTerminate();
         return -1;
     }
+
+    glEnable( GL_DEPTH_TEST );
+    glEnable( GL_MULTISAMPLE );
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     std::cout << "OpenGL version: "
               << glGetString(GL_VERSION)
@@ -126,18 +154,10 @@ int main() {
     //lightShader.set_vector3( "objectColor", glm::vec3(1.0f, 0.5f, 0.31f) );
     lightShader.set_vector3( "lightColor", glm::vec3(1.0f, 1.0f, 1.0f) );
 
-    //point light properties
-    glm::vec3 pointLightPositions[] = {
-        glm::vec3(-12.0f, 5.0f, -12.0f),
-        glm::vec3(-12.0f, 5.0f, 12.0f),
-        glm::vec3( 12.0f, 5.0f, -12.0f),
-        glm::vec3( 12.0f, 5.0f, 12.0f)
-    };
-
     Mesh lightMesh{ 8, vertices, triangles, (int)vertex_data.size(), (int)indice_data.size() };
 
     std::ifstream fm("materials_data.json");
-    json material_data = json::parse(fm);
+    material_data = json::parse(fm);
 
     materialShader.use();
     materialShader.get_material( material_data, pointLightPositions );
@@ -178,8 +198,8 @@ int main() {
 
     physicsManager.setup( 1024, 8192, 8192 );
 
-    int spawnCount = 200;
-    std::vector<Entity> entities;
+    //int spawnCount = 200;
+    //std::vector<Entity> entities;
 
     for( int i = 0; i < spawnCount; i++ ){
         float pos_x = rand_f(-8.0f, 8.0f), pos_y = rand_f( 10.0f, 25.0f), pos_z = rand_f(-10.0f, 10.0f);
@@ -228,10 +248,49 @@ int main() {
 
     const int cCollisionSteps = 2;
 
-    glEnable( GL_DEPTH_TEST );
-    glEnable( GL_MULTISAMPLE );
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    //frame buffer object
+    unsigned int depthMapFBO;
+    glGenFramebuffers( 1, &depthMapFBO );
+
+    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+
+    //create depth map texture
+    unsigned int depthMap;
+    glGenTextures( 1, &depthMap );
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 
+        SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+
+    float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    //attach depth texture as FBOs depth buffer
+    glBindFramebuffer( GL_FRAMEBUFFER, depthMapFBO );
+    glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0 );
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        std::cerr << "Shadow framebuffer is incomplete!" << std::endl;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    //create depth map shaders
+    const char *depth_vertex_shader_file_path = "shaders/depthShader.glsl";
+    const char *empty_fragment_shader_file_path = "shaders/emptyFragmentShader.glsl";
+    Shader depthShader{ depth_vertex_shader_file_path, empty_fragment_shader_file_path };
+    
+    //2. then render scene as normal with shadow mapping (using depth map)
+    /*glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //ConfigureShaderAndMatrices();
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    RenderScene();*/
+
+    materialShader.use();
+    materialShader.set_texture("shadowMap", 0);
 
     //glDepthMask( GL_FALSE );
 
@@ -255,36 +314,10 @@ int main() {
         //process inputs
         processInput(window);
 
-        glClearColor(0.2f, 0.6f, 0.8f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // bind textures on corresponding texture units
-        /*glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureA.ID);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, textureB.ID);*/
-        
-        // ..:: Drawing code (in render loop) :: ..
-
-        materialShader.use();
-
         camera.update_viewMatrix( );
 
-        //float rad = 0.5f * sin( glfwGetTime() + 1.0f ) + 0.5f;
-        float x = sin(glfwGetTime()) * 8.0f;
-        //float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
-        //light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
-
-        //materialShader.get_material(material_data);
-
-        materialShader.set_vector3( "viewPos", camera.position );
-        materialShader.set_matrix( "view", camera.viewMatrix );
-        materialShader.set_matrix( "projection", camera.perspectiveMatrix );
-
-        materialShader.set_vector3( "spotLight.position", glm::vec3(x, 10.0f, 0.0f) );
-
+        //process physics
         accumalator += deltaTime;
-
         //physics loop
         while( accumalator > fixedDeltaTime ){
             Body* body;
@@ -315,6 +348,70 @@ int main() {
             accumalator -= fixedDeltaTime;
         }
 
+        glClearColor(0.2f, 0.6f, 0.8f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        float x = sin(glfwGetTime()) * 8.0f;
+
+        //glm::vec3 lightPos = glm::vec3(x, 10.0f, 0.0f);
+        glm::vec3 lightDirection = glm::normalize(glm::vec3(-0.2f, -1.0f, -0.3f));
+        glm::vec3 lightTarget(0.0f);
+        glm::vec3 lightPos = lightTarget - lightDirection * 15.0f;
+
+        //render depth of scene to texture
+        float near_plane = 1.0f, far_plane = 40.0f; //7.5f;
+        glm::mat4 lightProjection = glm::ortho( -40.0f, 40.0f, -40.0f, 40.0f, near_plane, far_plane );
+        glm::mat4 lightView = glm::lookAt( lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f) );
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+        //render scene from lights point of view
+        //depthShader.use();
+        //depthShader.set_matrix( "lightSpaceMatrix", lightSpaceMatrix );
+        
+        //1. first render to depth map
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        glBindFramebuffer( GL_FRAMEBUFFER, depthMapFBO );
+        glClear(GL_DEPTH_BUFFER_BIT);
+        RenderScene(&depthShader, &ground_cube, lightSpaceMatrix);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        //reset viewport
+        glViewport(0, 0, SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // bind textures on corresponding texture units
+        /*glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureA.ID);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textureB.ID);*/
+
+        glActiveTexture( GL_TEXTURE0 );
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        
+        // ..:: Drawing code (in render loop) :: ..
+
+        materialShader.use();
+        materialShader.get_material( material_data, pointLightPositions );
+
+        //camera.update_viewMatrix( );
+
+        //float rad = 0.5f * sin( glfwGetTime() + 1.0f ) + 0.5f;
+        //float x = sin(glfwGetTime()) * 8.0f;
+        //float z = cos(glfwGetTime() + 1.5f) * 8.0f * rad;
+        //light.set_position( glm::vec3( x, 2.0f + (sin(glfwGetTime()) + 1.0f ) * 4.0f, 0.0f ) );
+
+        //materialShader.get_material(material_data);
+
+        //materialShader.set_vector3( "directionalLight.direction", glm::vec3( -0.2f, -1.0f, -0.3f ) );
+        materialShader.set_vector3( "directionalLight.direction", lightDirection );
+        materialShader.set_matrix( "lightSpaceMatrix", lightSpaceMatrix );
+
+        materialShader.set_vector3( "viewPos", camera.position );
+        materialShader.set_matrix( "view", camera.viewMatrix );
+        materialShader.set_matrix( "projection", camera.perspectiveMatrix );
+
+        materialShader.set_vector3( "spotLight.position", glm::vec3(x, 10.0f, 0.0f) );
+
         //render cubes
         for( int i = 0; i < spawnCount; i++ )
             entities[i].render();
@@ -324,6 +421,7 @@ int main() {
         //myShader.set_matrix( "view", camera.viewMatrix );
         //myShader.set_matrix( "projection", camera.perspectiveMatrix );
 
+        //render ground
         ground_cube.render();
 
         lightShader.use();
@@ -358,6 +456,23 @@ int main() {
 
     glfwTerminate();
     return 0;
+}
+
+void RenderScene( Shader *shader, Entity *entity, glm::mat4 lightSpaceMatrix ){
+    shader->use();
+    shader->set_matrix( "lightSpaceMatrix", lightSpaceMatrix );
+    
+    //render cubes
+    for( int i = 0; i < spawnCount; i++ ){
+        shader->set_matrix( "model", entities[i].modelMatrix );
+        //entities[i].render();
+        entities[i].mesh->draw();
+    }
+
+    //render ground
+    shader->set_matrix( "model", entity->modelMatrix );
+    //entity->render();
+    entity->mesh->draw();
 }
 
 void processInput( GLFWwindow *window ){
