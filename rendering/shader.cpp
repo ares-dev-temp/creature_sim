@@ -116,7 +116,7 @@ void Shader::get_material( json data, glm::vec3 pointLightPositions[] ){
     set_vector3( "lightColor", convert( data["cube_material"]["lightColor"] ) );
     //set_vector3( "viewPos", camera.position );
 
-    set_vector3( "material.ambient", convert( data["cube_material"]["ambient"] ) * 10.0f );
+    set_vector3( "material.ambient", convert( data["cube_material"]["ambient"] ) );
     set_vector3( "material.diffuse", convert( data["cube_material"]["diffuse"] ) );
     set_vector3( "material.specular", convert( data["cube_material"]["specular"] ) );
     set_float( "material.shininess", data["cube_material"]["shininess"] );

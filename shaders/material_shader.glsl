@@ -80,7 +80,13 @@ void main(){
     //phase 3: Spot Lighting
     lighting += CalculateSpotLight(spotLight, norm, fragPos, viewDir);
     
-    FragColor = vec4( lighting * color, 1.0f );
+    vec3 new_color = color * lighting;
+
+    //apply gamma correction
+    float gamma = 2.2;
+    new_color = pow( new_color, vec3(1.0/gamma) );
+
+    FragColor = vec4( new_color, 1.0f );
 }
 
 vec3 CalculateDirectionLight( DirectionalLight light, vec3 normal, vec3 viewDir ){
