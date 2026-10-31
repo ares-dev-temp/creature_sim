@@ -9,9 +9,11 @@
 using json = nlohmann::json;
 //using namespace glm;
 
-Shader::Shader( const char *vertexPath, const char *fragmentPath ){
+Shader::Shader( const char *vertexPath, const char *fragmentPath, const char *geometryPath ){
     vertexSource = read_file( vertexPath );
     fragmentSource = read_file( fragmentPath );
+    const char *test = "";
+    geometrySource = geometryPath != test ? read_file( geometryPath ) : "";
     compile_shader();
 }
 
@@ -46,6 +48,7 @@ std::string Shader::read_file( const char* file_name ){
 void Shader::compile_shader(){
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
     unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    unsigned int geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
 
     int success;
     char infoLog[512];
@@ -72,10 +75,25 @@ void Shader::compile_shader(){
         printf( "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED: %s\n", infoLog );
     }
 
+    //create and compile geometry shader
+    if( geometrySource.length() > 0 ){
+        const char *geometrySourcePtr = geometrySource.c_str();
+        glShaderSource(geometryShader, 1, &geometrySourcePtr, NULL);
+        glCompileShader(geometryShader);
+
+        glGetShaderiv(geometryShader, GL_COMPILE_STATUS, &success);
+        if(!success){
+            glGetShaderInfoLog(geometryShader, 512, NULL, infoLog);
+            printf( "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED: %s\n", infoLog );
+        }
+    }
+
     //create the Shader Program and link vertex and fragment shader
     ID = glCreateProgram();
     glAttachShader(ID, vertexShader);
     glAttachShader(ID, fragmentShader);
+    if( geometrySource.length() > 0 )
+        glAttachShader(ID, geometryShader);
     glLinkProgram(ID);
 
     glGetProgramiv(ID, GL_LINK_STATUS, &success);
@@ -86,6 +104,8 @@ void Shader::compile_shader(){
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+    if( geometrySource.length() > 0 )
+        glDeleteShader(geometryShader);
 }
 
 void Shader::set_texture( const char* name, int id ){
@@ -128,7 +148,7 @@ void Shader::get_material( json data, glm::vec3 pointLightPositions[] ){
     set_vector3( "directionalLight.specular", convert( data["directionalLight"]["specular"] ) );
 
     //point light properties
-    for( int i = 0; i < 4; i++ ){
+    for( int i = 0; i < pointLightPositions->length(); i++ ){
         std::string pointLight = "pointLights[" + std::to_string( i ) + "]";
         
         set_vector3( (pointLight + ".position").c_str(), pointLightPositions[i] );

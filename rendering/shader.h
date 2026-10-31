@@ -11,8 +11,9 @@ class Shader{
         unsigned int ID;
         std::string vertexSource;
         std::string fragmentSource;
+        std::string geometrySource;
 
-        Shader(const char *vertexPath, const char *fragmentPath);
+        Shader(const char *vertexPath, const char *fragmentPath, const char *geometryShader="");
         ~Shader();
         
         std::string read_file( const char* file_name );
